@@ -156,6 +156,43 @@ def uv_category(uv):
 
 # ─────────────────────────────────────────── Desktop shortcut helper ───────
 
+def _get_desktop():
+    """Return the real Desktop folder path for the current user.
+
+    Never assumes C:\\Users\\...\\Desktop — asks the OS directly:
+      Windows : HKCU registry Shell Folders key (honours relocated Desktops)
+      macOS   : ~/Desktop  (always correct on macOS)
+      Linux   : xdg-user-dir DESKTOP, falls back to ~/Desktop
+    """
+    if _PLAT == "Windows":
+        try:
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders",
+            )
+            path, _ = winreg.QueryValueEx(key, "Desktop")
+            winreg.CloseKey(key)
+            return path                          # e.g. "F:\\Desktop" or "D:\\..."
+        except Exception:
+            pass                                 # fall through to default below
+
+    elif _PLAT == "Linux":
+        try:
+            result = subprocess.run(
+                ["xdg-user-dir", "DESKTOP"],
+                capture_output=True, text=True,
+            )
+            path = result.stdout.strip()
+            if result.returncode == 0 and path:
+                return path
+        except FileNotFoundError:
+            pass                                 # xdg-user-dir not installed
+
+    # macOS and fallback for any platform
+    return os.path.join(os.path.expanduser("~"), "Desktop")
+
+
 def create_shortcut():
     """Create a desktop launcher appropriate for the current OS.
 
@@ -165,7 +202,7 @@ def create_shortcut():
     """
     script  = os.path.abspath(__file__)
     python  = sys.executable
-    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+    desktop = _get_desktop()
     os.makedirs(desktop, exist_ok=True)          # Linux may not have ~/Desktop
 
     try:
@@ -180,13 +217,23 @@ def create_shortcut():
 
 
 def _shortcut_windows(script, python, desktop):
-    """Windows .lnk via PowerShell WScript.Shell."""
+    """Windows .lnk via PowerShell WScript.Shell.
+
+    Uses pythonw.exe (the windowless Python launcher) so no black console
+    window appears when the shortcut is double-clicked.  Falls back to
+    python.exe if pythonw.exe is not found alongside it.
+    """
+    # Derive pythonw.exe from the current python.exe path
+    pythonw = os.path.join(os.path.dirname(python), "pythonw.exe")
+    if not os.path.isfile(pythonw):
+        pythonw = python          # safe fallback — console will be visible
+
     lnk     = os.path.join(desktop, "Tempest Weather.lnk")
     workdir = os.path.dirname(script)
     ps_content = (
         '$ws = New-Object -ComObject WScript.Shell\n'
         f'$s = $ws.CreateShortcut("{lnk}")\n'
-        f'$s.TargetPath = "{python}"\n'
+        f'$s.TargetPath = "{pythonw}"\n'
         f'$s.Arguments = \'"{script}"\'\n'
         f'$s.WorkingDirectory = "{workdir}"\n'
         '$s.Save()\n'
