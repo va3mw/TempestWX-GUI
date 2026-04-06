@@ -395,14 +395,6 @@ class TempestMonitor(tk.Tk):
             bg=self.ACCENT, fg=self.VAL,
         ).pack(side="left")
 
-        # Buttons — packed right-to-left so order reads left-to-right on screen
-        tk.Button(
-            self._title_frame, text="📌 Shortcut",
-            command=create_shortcut,
-            bg="#2d6a4f", fg="white",
-            font=tiny, relief="flat", padx=6, pady=3, cursor="hand2",
-        ).pack(side="right", padx=3)
-
         self._mini_btn = tk.Button(
             self._title_frame, text="⊟ Mini",
             command=self._enter_mini,
@@ -601,23 +593,31 @@ class TempestMonitor(tk.Tk):
         self._device_var, w = sub_w(upd_frame)
         w.pack(anchor="w")
 
-        # ── Status bar row (packet status + unit-cycle hint) ──────────────
-        # Sits below the battery/update row inside the same card.
-        # Keeping it here (not the title bar) lets the window stay narrow.
+        # ── Status bar row (packet status + hint + shortcut button) ──────────
         tk.Frame(c, bg=self.ACCENT, height=1).pack(fill="x", pady=(6, 2))
         status_row = tk.Frame(c, bg=self.CARD)
         status_row.pack(fill="x")
+
+        # Shortcut button lives here — keeps the title bar narrow
+        tk.Button(
+            status_row, text="📌 Shortcut",
+            command=create_shortcut,
+            bg="#2d6a4f", fg="white",
+            font=tiny, relief="flat", padx=5, pady=2, cursor="hand2",
+        ).pack(side="right")
+
+        tk.Label(status_row, text="↻ click values to cycle units",
+                 font=tiny, bg=self.CARD, fg="#6a9fb5").pack(side="right", padx=6)
+
         self._status_var = tk.StringVar(value="Waiting for data…")
         tk.Label(status_row, textvariable=self._status_var,
                  font=tiny, bg=self.CARD, fg=self.UNIT).pack(side="left")
-        tk.Label(status_row, text="  ↻ click values to cycle units",
-                 font=tiny, bg=self.CARD, fg="#6a9fb5").pack(side="right")
 
         for col in range(4):
-            # weight=0 — columns size to content, not to window width,
-            # so cards don't grow wide with blank space on the right.
+            # weight=0 keeps cards at content width (no stretching).
+            # Only configure the content frame — NOT the main window,
+            # so the main window can grow freely to fit the content frame.
             cf.grid_columnconfigure(col, weight=0, minsize=100)
-            self.grid_columnconfigure(col, weight=0, minsize=100)
 
         # ── Mini frame (hidden until mini mode) ───────────────────────────
         self._mini_frame = tk.Frame(self, bg=self.MINI_BG, height=50)
