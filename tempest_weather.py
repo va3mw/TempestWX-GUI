@@ -51,7 +51,6 @@ import sys
 import tempfile
 import threading
 import tkinter as tk
-import webbrowser
 from tkinter import font as tkfont, messagebox
 from datetime import datetime
 
@@ -381,18 +380,18 @@ class TempestMonitor(tk.Tk):
 
     def _build_ui(self):
         # Tighter fonts to keep the window compact
-        big   = tkfont.Font(family=FONT_FAMILY, size=22, weight="bold")
-        med   = tkfont.Font(family=FONT_FAMILY, size=12, weight="bold")
+        big   = tkfont.Font(family=FONT_FAMILY, size=18, weight="bold")
+        med   = tkfont.Font(family=FONT_FAMILY, size=11, weight="bold")
         small = tkfont.Font(family=FONT_FAMILY, size=9)
         tiny  = tkfont.Font(family=FONT_FAMILY, size=8)
 
         # ── Title bar ─────────────────────────────────────────────────────
-        self._title_frame = tk.Frame(self, bg=self.ACCENT, pady=4)
+        self._title_frame = tk.Frame(self, bg=self.ACCENT, pady=3)
         self._title_frame.grid(row=0, column=0, columnspan=4, sticky="ew")
 
         tk.Label(
             self._title_frame, text=f"  Tempest Weather Station  v{VERSION}",
-            font=tkfont.Font(family=FONT_FAMILY, size=13, weight="bold"),
+            font=tkfont.Font(family=FONT_FAMILY, size=11, weight="bold"),
             bg=self.ACCENT, fg=self.VAL,
         ).pack(side="left")
 
@@ -412,28 +411,7 @@ class TempestMonitor(tk.Tk):
         )
         self._mini_btn.pack(side="right", padx=3)
 
-        # Clickable map link — opens tempestwx.com/map in the default browser
-        tk.Label(
-            self._title_frame, text="🌐 Tempest Map",
-            font=tiny, bg=self.ACCENT, fg="#57c4d8",
-            cursor="hand2",
-        ).pack(side="right", padx=6)
-        # Bind on the label widget just created
-        self._title_frame.winfo_children()[-1].bind(
-            "<Button-1>",
-            lambda e: webbrowser.open("https://tempestwx.com/map"),
-        )
-
-        self._status_var = tk.StringVar(value="Waiting for data…")
-        tk.Label(
-            self._title_frame, textvariable=self._status_var,
-            font=tiny, bg=self.ACCENT, fg=self.UNIT,
-        ).pack(side="right", padx=8)
-
-        tk.Label(
-            self._title_frame, text="↻ click values to cycle units",
-            font=tiny, bg=self.ACCENT, fg="#6a9fb5",
-        ).pack(side="right", padx=4)
+        # Status and hint moved to the bottom card — title bar stays narrow
 
         # ── Content frame (holds all cards) ───────────────────────────────
         self._content_frame = tk.Frame(self, bg=self.BG)
@@ -443,11 +421,11 @@ class TempestMonitor(tk.Tk):
 
         def card(row, col, rowspan=1, colspan=1):
             f = tk.Frame(
-                cf, bg=self.CARD, padx=8, pady=5,
+                cf, bg=self.CARD, padx=6, pady=4,
                 highlightbackground=self.ACCENT, highlightthickness=1,
             )
             f.grid(row=row, column=col, rowspan=rowspan, columnspan=colspan,
-                   padx=4, pady=4, sticky="nsew")
+                   padx=3, pady=3, sticky="nsew")
             return f
 
         def lbl(parent, text):
@@ -623,9 +601,23 @@ class TempestMonitor(tk.Tk):
         self._device_var, w = sub_w(upd_frame)
         w.pack(anchor="w")
 
+        # ── Status bar row (packet status + unit-cycle hint) ──────────────
+        # Sits below the battery/update row inside the same card.
+        # Keeping it here (not the title bar) lets the window stay narrow.
+        tk.Frame(c, bg=self.ACCENT, height=1).pack(fill="x", pady=(6, 2))
+        status_row = tk.Frame(c, bg=self.CARD)
+        status_row.pack(fill="x")
+        self._status_var = tk.StringVar(value="Waiting for data…")
+        tk.Label(status_row, textvariable=self._status_var,
+                 font=tiny, bg=self.CARD, fg=self.UNIT).pack(side="left")
+        tk.Label(status_row, text="  ↻ click values to cycle units",
+                 font=tiny, bg=self.CARD, fg="#6a9fb5").pack(side="right")
+
         for col in range(4):
-            cf.grid_columnconfigure(col, weight=1, minsize=130)
-            self.grid_columnconfigure(col, weight=1, minsize=130)
+            # weight=0 — columns size to content, not to window width,
+            # so cards don't grow wide with blank space on the right.
+            cf.grid_columnconfigure(col, weight=0, minsize=100)
+            self.grid_columnconfigure(col, weight=0, minsize=100)
 
         # ── Mini frame (hidden until mini mode) ───────────────────────────
         self._mini_frame = tk.Frame(self, bg=self.MINI_BG, height=50)
@@ -1009,7 +1001,8 @@ class TempestMonitor(tk.Tk):
                 self._last_precip_time = self._ts(evt[0])
                 self._refresh_display()
 
-        self._status_var.set(f"Last packet: {mtype}  @  {now}")
+        # Keep status short — it's in the title bar and drives window width
+        self._status_var.set(f"{mtype}  @  {datetime.now().strftime('%H:%M:%S')}")
 
 
 if __name__ == "__main__":
