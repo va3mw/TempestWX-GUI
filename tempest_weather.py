@@ -386,14 +386,10 @@ class TempestMonitor(tk.Tk):
         tiny  = tkfont.Font(family=FONT_FAMILY, size=8)
 
         # ── Title bar ─────────────────────────────────────────────────────
+        # IMPORTANT: pack side="right" widgets FIRST — otherwise the left
+        # label claims all space and clips anything packed after it.
         self._title_frame = tk.Frame(self, bg=self.ACCENT, pady=3)
         self._title_frame.grid(row=0, column=0, columnspan=4, sticky="ew")
-
-        tk.Label(
-            self._title_frame, text=f"  Tempest Weather Station  v{VERSION}",
-            font=tkfont.Font(family=FONT_FAMILY, size=11, weight="bold"),
-            bg=self.ACCENT, fg=self.VAL,
-        ).pack(side="left")
 
         self._mini_btn = tk.Button(
             self._title_frame, text="⊟ Mini",
@@ -401,7 +397,13 @@ class TempestMonitor(tk.Tk):
             bg="#457b9d", fg="white",
             font=tiny, relief="flat", padx=6, pady=3, cursor="hand2",
         )
-        self._mini_btn.pack(side="right", padx=3)
+        self._mini_btn.pack(side="right", padx=3)   # packed BEFORE the label
+
+        tk.Label(
+            self._title_frame, text=f"  Tempest  v{VERSION}",
+            font=tkfont.Font(family=FONT_FAMILY, size=11, weight="bold"),
+            bg=self.ACCENT, fg=self.VAL,
+        ).pack(side="left")
 
         # Status and hint moved to the bottom card — title bar stays narrow
 
@@ -594,22 +596,22 @@ class TempestMonitor(tk.Tk):
         w.pack(anchor="w")
 
         # ── Status bar row (packet status + hint + shortcut button) ──────────
+        # Pack right-side widgets FIRST so they are never clipped.
         tk.Frame(c, bg=self.ACCENT, height=1).pack(fill="x", pady=(6, 2))
         status_row = tk.Frame(c, bg=self.CARD)
         status_row.pack(fill="x")
 
-        # Shortcut button lives here — keeps the title bar narrow
         tk.Button(
-            status_row, text="📌 Shortcut",
+            status_row, text="📌 Lnk",
             command=create_shortcut,
             bg="#2d6a4f", fg="white",
             font=tiny, relief="flat", padx=5, pady=2, cursor="hand2",
-        ).pack(side="right")
+        ).pack(side="right")                         # rightmost — packed first
 
-        tk.Label(status_row, text="↻ click values to cycle units",
+        tk.Label(status_row, text="↻ cycle units",
                  font=tiny, bg=self.CARD, fg="#6a9fb5").pack(side="right", padx=6)
 
-        self._status_var = tk.StringVar(value="Waiting for data…")
+        self._status_var = tk.StringVar(value="Waiting…")
         tk.Label(status_row, textvariable=self._status_var,
                  font=tiny, bg=self.CARD, fg=self.UNIT).pack(side="left")
 
@@ -617,7 +619,7 @@ class TempestMonitor(tk.Tk):
             # weight=0 keeps cards at content width (no stretching).
             # Only configure the content frame — NOT the main window,
             # so the main window can grow freely to fit the content frame.
-            cf.grid_columnconfigure(col, weight=0, minsize=100)
+            cf.grid_columnconfigure(col, weight=0, minsize=120)
 
         # ── Mini frame (hidden until mini mode) ───────────────────────────
         self._mini_frame = tk.Frame(self, bg=self.MINI_BG, height=50)
